@@ -77,7 +77,7 @@ jobs:
             ## Installation Instructions
             1. Download the JAR file to your computer
             2. Open command prompt/terminal
-            3. Run the application with: `java -jar addfreetube.jar`
+            3. Run the application with: `java -jar ecomapp.jar`
             
             System requirement: Java 24 or higher
         env:
