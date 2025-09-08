@@ -1,0 +1,80 @@
+# Resource-optimized Spring Boot configuration for Docker environments
+spring:
+  profiles:
+    active: docker
+
+  # Database configuration with connection pooling optimizations
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/ecomapp}
+      auto-index-creation: false
+
+  # Kafka configuration optimized for low resources
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ecomapp-group
+      auto-offset-reset: latest
+      enable-auto-commit: true
+      auto-commit-interval: 5000
+      max-poll-records: 10
+      fetch-min-size: 1
+      fetch-max-wait: 500
+    producer:
+      acks: 1
+      retries: 1
+      batch-size: 1024
+      linger-ms: 5
+      buffer-memory: 1048576
+
+# Server configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  tomcat:
+    threads:
+      max: 50
+      min-spare: 5
+    max-connections: 200
+    accept-count: 10
+    connection-timeout: 20000
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+
+# Actuator endpoints for health checks
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  metrics:
+    export:
+      simple:
+        enabled: false
+
+# Logging configuration
+logging:
+  level:
+    com.hackathon.ecomapp: INFO
+    org.springframework.kafka: WARN
+    org.mongodb.driver: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 3

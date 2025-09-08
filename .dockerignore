@@ -1,0 +1,30 @@
+# Ignore target directory and build artifacts
+target/
+*.jar
+*.war
+
+# Ignore IDE files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore version control
+.git/
+.gitignore
+
+# Ignore documentation
+README.md
+HELP.md
+
+# Ignore logs
+*.log
+
+# Ignore temporary files
+*.tmp
+*.temp
