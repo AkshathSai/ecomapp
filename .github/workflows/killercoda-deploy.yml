@@ -1,0 +1,248 @@
+name: Killercoda Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - killercoda
+          - local-dev
+        default: 'killercoda'
+  push:
+    branches: [ main ]
+    paths:
+      - 'docker-compose.yml'
+      - 'Dockerfile'
+
+env:
+  COMPOSE_PROJECT_NAME: ecomapp
+
+jobs:
+  deploy-killercoda:
+    name: Deploy to Killercoda Environment
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Create deployment package
+      run: |
+        # Create a deployment directory
+        mkdir -p deployment
+        
+        # Copy necessary files for Killercoda deployment
+        cp docker-compose.yml deployment/
+        cp Dockerfile deployment/
+        cp -r src deployment/
+        cp pom.xml deployment/
+        
+        # Create Killercoda-specific docker-compose override
+        cat > deployment/docker-compose.killercoda.yml << 'EOF'
+        version: '3.8'
+        
+        services:
+          mongodb:
+            deploy:
+              resources:
+                limits:
+                  memory: 128M
+                  cpus: '0.25'
+                reservations:
+                  memory: 64M
+                  cpus: '0.1'
+        
+          zookeeper:
+            deploy:
+              resources:
+                limits:
+                  memory: 128M
+                  cpus: '0.25'
+                reservations:
+                  memory: 64M
+                  cpus: '0.1'
+        
+          kafka:
+            environment:
+              KAFKA_HEAP_OPTS: "-Xmx128M -Xms64M"
+            deploy:
+              resources:
+                limits:
+                  memory: 256M
+                  cpus: '0.5'
+                reservations:
+                  memory: 128M
+                  cpus: '0.25'
+        
+          ecomapp:
+            environment:
+              JAVA_OPTS: "-Xms64m -Xmx256m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+            deploy:
+              resources:
+                limits:
+                  memory: 384M
+                  cpus: '0.5'
+                reservations:
+                  memory: 256M
+                  cpus: '0.25'
+        EOF
+
+    - name: Create deployment scripts
+      run: |
+        # Create deployment script for Killercoda
+        cat > deployment/deploy-killercoda.sh << 'EOF'
+        #!/bin/bash
+        
+        echo "🚀 Starting E-commerce Application Deployment for Killercoda..."
+        
+        # Stop any existing containers
+        docker-compose -f docker-compose.yml -f docker-compose.killercoda.yml down --remove-orphans
+        
+        # Clean up old images and volumes if needed
+        echo "🧹 Cleaning up resources..."
+        docker system prune -f
+        docker volume prune -f
+        
+        # Build and start services
+        echo "🏗️ Building and starting services..."
+        docker-compose -f docker-compose.yml -f docker-compose.killercoda.yml up --build -d
+        
+        # Wait for services to be ready
+        echo "⏳ Waiting for services to start..."
+        sleep 30
+        
+        # Check service health
+        echo "🔍 Checking service health..."
+        docker-compose -f docker-compose.yml -f docker-compose.killercoda.yml ps
+        
+        # Display service URLs
+        echo "✅ Deployment complete!"
+        echo "📱 Application URL: http://localhost:8080"
+        echo "📊 API Documentation: http://localhost:8080/swagger-ui.html"
+        echo "🔍 Health Check: http://localhost:8080/actuator/health"
+        
+        # Show logs for debugging
+        echo "📋 Recent logs:"
+        docker-compose -f docker-compose.yml -f docker-compose.killercoda.yml logs --tail=20
+        EOF
+        
+        chmod +x deployment/deploy-killercoda.sh
+        
+        # Create quick start script
+        cat > deployment/quick-start.sh << 'EOF'
+        #!/bin/bash
+        
+        echo "🚀 Quick Start - E-commerce Application"
+        echo "======================================"
+        
+        # Check if Docker is running
+        if ! docker info > /dev/null 2>&1; then
+            echo "❌ Docker is not running. Please start Docker first."
+            exit 1
+        fi
+        
+        # Deploy with resource constraints for Killercoda
+        ./deploy-killercoda.sh
+        
+        echo ""
+        echo "🎯 Quick Test Commands:"
+        echo "curl http://localhost:8080/actuator/health"
+        echo "curl http://localhost:8080/api/products"
+        EOF
+        
+        chmod +x deployment/quick-start.sh
+
+    - name: Create README for deployment
+      run: |
+        cat > deployment/README.md << 'EOF'
+        # E-commerce Application - Killercoda Deployment
+        
+        This package contains everything needed to deploy the e-commerce application in resource-constrained environments like Killercoda.
+        
+        ## Quick Start
+        
+        ```bash
+        # Make scripts executable
+        chmod +x *.sh
+        
+        # Deploy the application
+        ./quick-start.sh
+        ```
+        
+        ## Manual Deployment
+        
+        ```bash
+        # Deploy with resource constraints
+        docker-compose -f docker-compose.yml -f docker-compose.killercoda.yml up --build -d
+        ```
+        
+        ## Services
+        
+        - **Application**: http://localhost:8080
+        - **API Docs**: http://localhost:8080/swagger-ui.html
+        - **Health Check**: http://localhost:8080/actuator/health
+        - **MongoDB**: localhost:27017
+        - **Kafka**: localhost:9092
+        
+        ## Resource Usage
+        
+        - Total Memory: ~896MB
+        - Total CPU: ~1.5 cores
+        - Storage: ~2GB
+        
+        ## Troubleshooting
+        
+        ```bash
+        # Check container status
+        docker-compose ps
+        
+        # View logs
+        docker-compose logs ecomapp
+        
+        # Restart services
+        docker-compose restart
+        
+        # Clean restart
+        docker-compose down && docker-compose up -d
+        ```
+        
+        ## API Testing
+        
+        ```bash
+        # Health check
+        curl http://localhost:8080/actuator/health
+        
+        # Get products
+        curl http://localhost:8080/api/products
+        
+        # Create a product (if endpoint exists)
+        curl -X POST http://localhost:8080/api/products \
+          -H "Content-Type: application/json" \
+          -d '{"name":"Test Product","price":19.99}'
+        ```
+        EOF
+
+    - name: Upload deployment package
+      uses: actions/upload-artifact@v3
+      with:
+        name: killercoda-deployment-package
+        path: deployment/
+        retention-days: 30
+
+    - name: Create deployment summary
+      run: |
+        echo "## 🚀 Killercoda Deployment Package Created" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Package Contents:" >> $GITHUB_STEP_SUMMARY
+        echo "- Docker Compose configuration optimized for resource-constrained environments" >> $GITHUB_STEP_SUMMARY
+        echo "- Automated deployment scripts" >> $GITHUB_STEP_SUMMARY
+        echo "- Resource limits: 896MB RAM, 1.5 CPU cores" >> $GITHUB_STEP_SUMMARY
+        echo "- Quick start guide and troubleshooting instructions" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🎯 Download and Deploy:" >> $GITHUB_STEP_SUMMARY
+        echo "1. Download the 'killercoda-deployment-package' artifact" >> $GITHUB_STEP_SUMMARY
+        echo "2. Extract and run: \`./quick-start.sh\`" >> $GITHUB_STEP_SUMMARY
+        echo "3. Access the application at: http://localhost:8080" >> $GITHUB_STEP_SUMMARY

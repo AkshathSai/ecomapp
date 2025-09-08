@@ -1,172 +1,234 @@
-# Ecommerce Application
+# E-commerce Application
 
-A complete ecommerce application built with **Java Spring Boot**, **MongoDB**, and **Apache Kafka** for the hackathon requirements.
+A Spring Boot-based e-commerce application with MongoDB and Kafka integration, optimized for resource-constrained environments like Killercoda.
 
-## Features
+## 🚀 Quick Start
 
-✅ **Place an order** - Complete order management system  
-✅ **Add items to cart** - Cart management with real-time updates  
-✅ **Order and add discount code** - Promotion code validation system  
-✅ **Carbon calculation in Order service** - Environmental impact tracking  
-✅ **Kafka-based asynchronous messaging** - For cart item additions  
-
-## Tech Stack
-
-- **Backend**: Java Spring Boot 3.x
-- **Database**: MongoDB
-- **Messaging**: Apache Kafka
-- **Build Tool**: Maven
-
-## Prerequisites
-
-- Java 17 or higher
-- MongoDB running on localhost:27017
-- Apache Kafka running on localhost:9092
-- Maven 3.6+
-
-## Quick Start
-
-1. **Clone and navigate to the project**
-   ```bash
-   cd ecomapp
-   ```
-
-2. **Install dependencies**
-   ```bash
-   ./mvnw clean install
-   ```
-
-3. **Start MongoDB and Kafka**
-   ```bash
-   # Start MongoDB
-   mongod
-   
-   # Start Kafka (in separate terminals)
-   bin/zookeeper-server-start.sh config/zookeeper.properties
-   bin/kafka-server-start.sh config/server.properties
-   ```
-
-4. **Run the application**
-   ```bash
-   ./mvnw spring-boot:run
-   ```
-
-The application will start on `http://localhost:8080`
-
-## API Endpoints
-
-### Products
-- `GET /api/products` - Get all products
-- `GET /api/products/{id}` - Get product by ID
-- `GET /api/products/search?name={name}` - Search products
-- `GET /api/products/available` - Get available products
-- `POST /api/products` - Create new product
-
-### Cart (Asynchronous with Kafka)
-- `POST /api/cart/add?userId={userId}&productId={productId}&quantity={quantity}` - Add item to cart
-- `GET /api/cart/{userId}` - Get user's cart
-- `DELETE /api/cart/{userId}` - Clear cart
-
-### Orders
-- `POST /api/orders/place?userId={userId}&promotionCode={code}` - Place order with optional promotion
-- `GET /api/orders/user/{userId}` - Get user's orders
-- `GET /api/orders/{orderId}` - Get specific order
-- `PUT /api/orders/{orderId}/status?status={status}` - Update order status
-
-### Promotions
-- `POST /api/promotions/validate?code={code}&orderAmount={amount}` - Validate promotion code
-- `POST /api/promotions/calculate-discount?code={code}&orderAmount={amount}` - Calculate discount
-- `POST /api/promotions` - Create new promotion
-
-## Sample Data
-
-The application automatically initializes with sample data:
-
-### Products
-- Gaming Laptop ($1200, Carbon: 45.5kg)
-- Smartphone ($800, Carbon: 12.3kg)
-- Wireless Headphones ($200, Carbon: 5.2kg)
-- Tablet ($400, Carbon: 18.7kg)
-- Smart Watch ($300, Carbon: 8.9kg)
-
-### Promotion Codes
-- `SAVE10` - 10% off orders over $100
-- `SAVE50` - $50 off orders over $500
-- `WELCOME20` - 20% off for new customers (min $50)
-
-## Usage Examples
-
-### 1. Add Items to Cart (Asynchronous)
+### Local Development
 ```bash
-curl -X POST "http://localhost:8080/api/cart/add?userId=user1&productId=PRODUCT_ID&quantity=2"
+# Start all services with Docker Compose
+./start-dev.sh
 ```
 
-### 2. Place Order with Promotion
+### Killercoda/Resource-Constrained Environment
 ```bash
-curl -X POST "http://localhost:8080/api/orders/place?userId=user1&promotionCode=SAVE10"
+# Use the optimized configuration
+docker-compose -f docker-compose.yml -f docker-compose.killercoda.yml up -d
 ```
 
-### 3. Get Order with Carbon Footprint
+## 📋 Prerequisites
+
+- Docker & Docker Compose
+- Java 21+ (for local development)
+- Maven 3.6+ (for local development)
+
+## 🏗️ Architecture
+
+The application consists of:
+- **Spring Boot Application** (Port 8080)
+- **MongoDB** (Port 27017) - Database
+- **Apache Kafka** (Port 9092) - Message broker
+- **Zookeeper** (Port 2181) - Kafka coordination
+
+## 🔧 Configuration
+
+### Resource Limits (Killercoda-optimized)
+- **Total Memory**: ~896MB
+- **Total CPU**: ~1.5 cores
+- **Storage**: ~2GB
+
+### Environment Variables
+- `SPRING_DATA_MONGODB_URI` - MongoDB connection string
+- `SPRING_KAFKA_BOOTSTRAP_SERVERS` - Kafka server addresses
+- `SPRING_PROFILES_ACTIVE` - Active Spring profile
+- `JAVA_OPTS` - JVM optimization options
+
+## 🛠️ Development
+
+### Building the Application
 ```bash
-curl -X GET "http://localhost:8080/api/orders/ORDER_ID"
+mvn clean package -DskipTests
 ```
 
-## Carbon Footprint Calculation
-
-The system calculates carbon footprint using the formula:
-```
-Total Carbon Footprint = Σ(product.carbonFootprint × quantity)
-```
-
-Each order includes:
-- Individual item carbon footprints
-- Total order carbon footprint
-- Environmental impact awareness
-
-## Kafka Integration
-
-Cart operations use Kafka for asynchronous processing:
-- **Topic**: `cart-items`
-- **Events**: ADD, REMOVE, UPDATE
-- **Consumer Group**: `ecom-group`
-
-This ensures scalable cart management and real-time updates.
-
-## Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   REST APIs     │    │   Kafka Queue   │    │    MongoDB      │
-│                 │    │                 │    │                 │
-│ - Products      │◄──►│ - cart-items    │◄──►│ - products      │
-│ - Cart          │    │ - async proc.   │    │ - carts         │
-│ - Orders        │    │                 │    │ - orders        │
-│ - Promotions    │    │                 │    │ - promotions    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-## Environment Configuration
-
-Key configuration in `application.properties`:
-```properties
-spring.data.mongodb.uri=mongodb://localhost:27017/ecomapp
-spring.kafka.bootstrap-servers=localhost:9092
-spring.kafka.consumer.group-id=ecom-group
-```
-
-## Testing
-
-Run tests with:
+### Running Tests
 ```bash
-./mvnw test
+mvn test
 ```
 
-## Contributing
+### Local Development (without Docker)
+```bash
+# Start MongoDB and Kafka locally
+# Then run:
+mvn spring-boot:run
+```
+
+## 🐳 Docker Deployment
+
+### Standard Deployment
+```bash
+docker-compose up -d
+```
+
+### Resource-Constrained Deployment
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.killercoda.yml up -d
+```
+
+### Building Custom Image
+```bash
+docker build -t ecomapp:latest .
+```
+
+## 📊 Monitoring & Health Checks
+
+### Health Check Endpoint
+```bash
+curl http://localhost:8080/actuator/health
+```
+
+### API Documentation
+Visit: http://localhost:8080/swagger-ui.html
+
+### Service Status
+```bash
+docker-compose ps
+```
+
+### View Logs
+```bash
+# All services
+docker-compose logs
+
+# Specific service
+docker-compose logs ecomapp
+docker-compose logs mongodb
+docker-compose logs kafka
+```
+
+## 🔄 CI/CD Workflows
+
+The project includes GitHub Actions workflows for:
+
+### 1. PR Build (`pr-build.yml`)
+- Runs on pull requests
+- Executes tests and builds
+- Performs security scans
+- Tests Docker image build
+
+### 2. CI/CD Pipeline (`ci-cd.yml`)
+- Runs on push to main/develop
+- Builds and tests application
+- Builds and pushes Docker images
+- Deploys to staging/production
+
+### 3. Release Workflow (`release.yml`)
+- Creates releases with version tags
+- Builds release artifacts
+- Publishes Docker images
+
+### 4. Killercoda Deployment (`killercoda-deploy.yml`)
+- Creates optimized deployment packages
+- Resource-constrained configurations
+- Automated deployment scripts
+
+## 🎯 API Endpoints
+
+### Core Endpoints
+- `GET /actuator/health` - Health check
+- `GET /api/products` - List products
+- `POST /api/products` - Create product
+- `GET /api/cart` - Get cart
+- `POST /api/cart/items` - Add to cart
+- `GET /api/orders` - List orders
+- `POST /api/orders` - Create order
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+#### Application Won't Start
+```bash
+# Check logs
+docker-compose logs ecomapp
+
+# Restart services
+docker-compose restart
+
+# Clean restart
+docker-compose down && docker-compose up -d
+```
+
+#### Database Connection Issues
+```bash
+# Check MongoDB status
+docker-compose logs mongodb
+
+# Verify connection
+docker-compose exec mongodb mongo --eval "db.adminCommand('ismaster')"
+```
+
+#### Kafka Issues
+```bash
+# Check Kafka logs
+docker-compose logs kafka
+
+# List topics
+docker-compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
+```
+
+#### Memory Issues (Killercoda)
+```bash
+# Check resource usage
+docker stats
+
+# Use memory-optimized configuration
+docker-compose -f docker-compose.yml -f docker-compose.killercoda.yml up -d
+```
+
+## 🛡️ Security
+
+- Non-root user in Docker container
+- Resource limits configured
+- Health checks implemented
+- Security scanning in CI/CD
+
+## 📈 Performance Optimization
+
+### For Resource-Constrained Environments
+- JVM heap size limited to 256MB
+- Kafka heap size limited to 128MB
+- MongoDB memory limits applied
+- Multi-stage Docker build for smaller images
+
+### Monitoring Resource Usage
+```bash
+# Real-time resource usage
+docker stats
+
+# Container resource limits
+docker-compose config
+```
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create feature branch
-3. Submit pull request
+2. Create a feature branch
+3. Make changes with tests
+4. Submit a pull request
 
-## License
+The CI/CD pipeline will automatically:
+- Run tests
+- Perform security scans
+- Build Docker images
+- Validate the changes
 
-MIT License - Built for Hackathon
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 📞 Support
+
+For issues and questions:
+1. Check the troubleshooting section
+2. Review the logs: `docker-compose logs`
+3. Create an issue in the repository
