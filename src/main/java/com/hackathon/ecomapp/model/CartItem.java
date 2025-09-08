@@ -1,12 +1,8 @@
 package com.hackathon.ecomapp.model;
 
-import org.springframework.data.annotation.Id;
-
 import java.math.BigDecimal;
 
 public class CartItem {
-    @Id
-    private String id;
     private String productId;
     private String productName;
     private BigDecimal price;
@@ -22,10 +18,6 @@ public class CartItem {
         this.quantity = quantity;
         this.carbonFootprint = carbonFootprint;
     }
-
-    // Getters and Setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
 
     public String getProductId() { return productId; }
     public void setProductId(String productId) { this.productId = productId; }
