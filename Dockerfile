@@ -1,59 +1,42 @@
-# Multi-stage Docker build optimized for resource-constrained environments
-FROM eclipse-temurin:21-jdk-alpine as builder
+# Multi-stage build
+FROM maven:3.9.4-openjdk-21-slim AS build
 
 # Set working directory
 WORKDIR /app
 
-# Install curl for health checks (needed for Alpine)
-RUN apk add --no-cache curl
-
-# Copy Maven wrapper and pom.xml
-COPY mvnw .
-COPY mvnw.cmd .
-COPY .mvn .mvn
+# Copy pom.xml and download dependencies
 COPY pom.xml .
+RUN mvn dependency:go-offline -B
 
-# Download dependencies
-RUN chmod +x ./mvnw && ./mvnw dependency:go-offline -B
-
-# Copy source code
+# Copy source code and build the application
 COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Build the application with optimizations
-RUN ./mvnw clean package -DskipTests -Dspring-boot.build-image.skip=true
-
-# Production stage with minimal Alpine image
-FROM eclipse-temurin:21-jre-alpine
-
-# Install curl for health checks and create app user
-RUN apk add --no-cache curl && \
-    addgroup -g 1001 -S appuser && \
-    adduser -S appuser -G appuser
+# Runtime stage
+FROM openjdk:21-jre-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy the jar file from builder stage
-COPY --from=builder /app/target/ecomapp-*.jar app.jar
+# Create non-root user for security
+RUN addgroup --system --gid 1001 spring && \
+    adduser --system --uid 1001 --ingroup spring spring
 
-# Change ownership to app user
-RUN chown -R appuser:appuser /app
-USER appuser
+# Copy the built jar from build stage
+COPY --from=build /app/target/ecomapp-*.jar app.jar
+
+# Change ownership of the app directory
+RUN chown -R spring:spring /app
+
+# Switch to non-root user
+USER spring
 
 # Expose port
 EXPOSE 8080
 
-# Optimized health check with reduced frequency
-HEALTHCHECK --interval=60s --timeout=5s --start-period=90s --retries=2 \
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8080/actuator/health || exit 1
 
-# Run the application with JVM optimizations for resource constraints
-ENTRYPOINT ["java", \
-    "-XX:+UseContainerSupport", \
-    "-XX:MaxRAMPercentage=75.0", \
-    "-XX:+UseG1GC", \
-    "-XX:+UseStringDeduplication", \
-    "-Xss256k", \
-    "-XX:MetaspaceSize=64m", \
-    "-XX:MaxMetaspaceSize=128m", \
-    "-jar", "app.jar"]
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]
